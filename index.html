@@ -460,7 +460,7 @@ const nodes = [
   // NOTE: "Tyler" was a Deepgram transcription error — speaker said "Taylor's lawyer" (= Zach's lawyer).
   // There is NO separate person named Tyler. Removed from graph.
   { id: "MOOR", label: "Moor / Roberto\n(Lawyer)", type: "lawyer", group: "other",
-    details: { "Role": "Lawyer(s) on Zach's side", "Source": "Transcript" } },
+    details: { "Role": "Lawyer on Italo/Ferrari's side", "Source": "Transcript: 'the email from Moor he doesn't understand exactly'" } },
 ];
 
 const edges = [
@@ -536,7 +536,7 @@ const edges = [
   { source: "FRANK", target: "ITALO", label: "intermediary for", type: "person_company", source_doc: "Transcript" },
 
   // REMOVED: Tyler → Italo edge — "Tyler" was a misheard "Taylor" (Zach). No such person exists.
-  { source: "MOOR", target: "ZACH", label: "lawyer for", type: "person_company", source_doc: "Transcript" },
+  { source: "MOOR", target: "ITALO", label: "lawyer for", type: "person_company", source_doc: "Transcript: 'the email from Moor' — represents Italo's side" },
 
   // === MONARCH held mortgage post-sale ===
   { source: "MONARCH", target: "SUD", label: "charge post-sale (disch.)", type: "historical", source_doc: "LRO 53: SD398765 (2020/07/02) → DISCH SD502161 (2024/08/06)" },
