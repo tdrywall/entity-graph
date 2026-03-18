@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entity Relationship Graph — Construction Lien Dispute</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  #graph-container {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+
+  svg:active { cursor: grabbing; }
+
+  /* Header bar */
+  .header-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .header-bar h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-bar .subtitle {
+    font-size: 12px;
+    color: #666;
+    font-weight: 400;
+  }
+
+  .legend {
+    position: fixed;
+    top: 72px;
+    left: 16px;
+    background: rgba(15,15,22,0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px;
+    z-index: 50;
+    min-width: 200px;
+  }
+
+  .legend h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: #aaa;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Detail panel */
+  .detail-panel {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    width: 380px;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+    background: rgba(15,15,22,0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 20px;
+    z-index: 50;
+    display: none;
+  }
+
+  .detail-panel.active { display: block; }
+
+  .detail-panel h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+
+  .detail-panel .entity-type {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin-bottom: 12px;
+  }
+
+  .detail-section {
+    margin-bottom: 14px;
+  }
+
+  .detail-section h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #666;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .detail-row {
+    font-size: 12px;
+    padding: 4px 0;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .detail-row:last-child { border-bottom: none; }
+
+  .detail-row .label {
+    color: #888;
+    display: inline;
+  }
+
+  .detail-row .value {
+    color: #ddd;
+    display: inline;
+  }
+
+  .connection-item {
+    font-size: 12px;
+    padding: 6px 8px;
+    margin: 3px 0;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    border-left: 3px solid;
+    line-height: 1.4;
+  }
+
+  .connection-item .conn-target {
+    font-weight: 600;
+    color: #ddd;
+  }
+
+  .connection-item .conn-type {
+    color: #aaa;
+    font-size: 11px;
+  }
+
+  .connection-item .conn-source {
+    color: #666;
+    font-size: 10px;
+    font-style: italic;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+
+  .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+  /* Controls */
+  .controls {
+    position: fixed;
+    bottom: 16px; left: 16px;
+    display: flex;
+    gap: 6px;
+    z-index: 50;
+  }
+
+  .controls button {
+    background: rgba(15,15,22,0.95);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #aaa;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .controls button:hover { background: rgba(30,30,45,0.95); color: #fff; }
+  .controls button.active { background: rgba(96,165,250,0.15); color: #60a5fa; border-color: rgba(96,165,250,0.3); }
+
+  /* Edge styling */
+  .link { stroke-opacity: 0.35; fill: none; }
+  .link:hover { stroke-opacity: 0.8; }
+  .link-label {
+    font-size: 9px;
+    fill: #555;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  /* Node styling */
+  .node { cursor: pointer; }
+  .node circle { transition: all 0.15s; }
+  .node:hover circle {
+    filter: brightness(1.3);
+    stroke-width: 3px;
+  }
+  .node.selected circle {
+    stroke: #fff;
+    stroke-width: 3px;
+  }
+  .node-label {
+    font-size: 10px;
+    fill: #bbb;
+    text-anchor: middle;
+    pointer-events: none;
+    font-weight: 500;
+  }
+
+  .node.dimmed { opacity: 0.12; }
+  .link.dimmed { opacity: 0.04; }
+  .link-label.dimmed { opacity: 0; }
+
+  /* Scrollbar */
+  .detail-panel::-webkit-scrollbar { width: 4px; }
+  .detail-panel::-webkit-scrollbar-track { background: transparent; }
+  .detail-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  /* Filter buttons */
+  .filter-bar {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    display: flex;
+    gap: 6px;
+    z-index: 50;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 500px;
+  }
+
+  .filter-btn {
+    background: rgba(15,15,22,0.95);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #aaa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { background: rgba(30,30,45,0.95); color: #fff; }
+  .filter-btn.active { border-color: rgba(96,165,250,0.3); color: #60a5fa; }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <h1>Entity Relationship Graph</h1>
+  <span class="subtitle">Construction Lien Dispute — North Bay & Sudbury Properties · Click any node for details</span>
+</div>
+
+<div class="legend">
+  <h3>Entity Types</h3>
+  <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Property</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>Property Owner</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Person</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Company</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f43f5e"></div>Lien Claimant</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Mortgage / Charge Holder</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>Historical Owner</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Lawyer / Other</div>
+  <h3 style="margin-top:14px">Edge Types</h3>
+  <div class="legend-item" style="gap:6px"><div style="width:30px;height:2px;background:#22d3ee;border-radius:1px"></div>Ownership</div>
+  <div class="legend-item" style="gap:6px"><div style="width:30px;height:2px;background:#f43f5e;border-radius:1px"></div>Lien</div>
+  <div class="legend-item" style="gap:6px"><div style="width:30px;height:2px;background:#fbbf24;border-radius:1px"></div>Mortgage / Charge</div>
+  <div class="legend-item" style="gap:6px"><div style="width:30px;height:2px;background:#a78bfa;border-radius:1px"></div>Person → Company</div>
+  <div class="legend-item" style="gap:6px"><div style="width:30px;height:2px;background:#888;border-radius:1px;border:1px dashed #888"></div>Transfer / Historical</div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+  <button class="close-btn" onclick="closePanel()">✕</button>
+  <div id="detailContent"></div>
+</div>
+
+<div class="controls">
+  <button onclick="resetZoom()">Reset View</button>
+  <button onclick="toggleLabels()" id="labelToggle" class="active">Labels</button>
+</div>
+
+<div id="graph-container">
+  <svg id="graph"></svg>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// ===================================================================
+//  DATA — Every node and edge sourced from PDFs and transcripts
+//  EACH edge has a "source_doc" field for auditability
+// ===================================================================
+
+const nodes = [
+  // PROPERTIES
+  { id: "NB", label: "352 Lakeshore Dr\nNorth Bay", type: "property", group: "property",
+    details: { "PIN": "49172-0117 (LT)", "LRO": "#36", "Legal Description": "PCL 2455 SEC WF; PT LT 40 CON 17 West Ferris, North Bay, District of Nipissing", "Current Owner": "BERKSHIRE ENTERPRISES INC." } },
+  { id: "SUD", label: "Sudbury Property\nJean St", type: "property", group: "property",
+    details: { "PIN": "02179-0065 (LT)", "LRO": "#53", "Legal Description": "LTs 91-104, Plan M94, City of Sudbury", "Current Owner": "HERITAGE COMMUNITY LIVING AT LAKEVIEW INC." } },
+
+  // PROPERTY OWNERS
+  { id: "BERK", label: "Berkshire\nEnterprises Inc.", type: "property_owner", group: "owner",
+    details: { "Full Name": "BERKSHIRE ENTERPRISES INC.", "Role": "Current owner of 352 Lakeshore Dr, North Bay", "Purchased From": "Thos. Farquhar & Sons Co. Limited", "Purchase Date": "2020/08/05", "Purchase Price": "$1,100,000" } },
+  { id: "HER", label: "Heritage Community\nLiving at Lakeview Inc.", type: "property_owner", group: "owner",
+    details: { "Full Name": "HERITAGE COMMUNITY LIVING AT LAKEVIEW INC.", "Role": "Current owner of Sudbury property", "Purchased From": "Monarch Recovery Services", "Purchase Date": "2020/07/02", "Purchase Price": "$700,000" } },
+
+  // PEOPLE - Call participants
+  { id: "ZACH", label: "Zach Taylor", type: "person", group: "person",
+    details: { "Role": "Contractor / Claimant — filed construction liens", "Company": "Taylor Construction O/A 14874285 Canada Inc.", "Total Liens": "$393,095 (North Bay) + $1,034,337 (Sudbury) = $1,427,432" } },
+  { id: "ITALO", label: "Italo Ferrari", type: "person", group: "person",
+    details: { "Role": "Developer — named in lawsuit, wants name removed", "Quote": "When you guys issue a lawsuit, you put in 15 f***ing companies there. They have nothing to do with it.", "Wants": "All names except Berkshire, Heritage, and LSTI removed from liens and lawsuit" } },
+  { id: "FRANK", label: "Frank", type: "person", group: "person",
+    details: { "Role": "Intermediary on the call between Zach and Italo" } },
+  { id: "MIKE", label: "Mike", type: "person", group: "person",
+    details: { "Role": "Building owner — owns Berkshire Enterprises Inc.", "Quote": "I'm Berkshire. Take it easy." } },
+  { id: "LOU", label: "Lou", type: "person", group: "person",
+    details: { "Role": "Associated with LSTI — 'LSTI is Lou'", "Source": "Transcript" } },
+
+  // PEOPLE - From documents
+  { id: "TOOR_A", label: "Abtar Singh\nToor", type: "person", group: "person",
+    details: { "Role": "Director of 1882291 Ontario Inc.", "Address": "147 Belfield Road, Rexdale, Ontario, M9W 1G8", "Date Began": "September 11, 2012", "Source": "Corporate Profile Report (2).pdf" } },
+  { id: "OLEARY", label: "Evan O'Leary", type: "person", group: "person",
+    details: { "Role": "Chief Officer of 15558409 Canada Ltd.", "Address": "4007 Espaniel Rd., Unit 311, Sagamok Anishnawbek, ON P0P 2L0", "Source": "Corporate Profile Report (4).pdf" } },
+  { id: "BARTLEMAN", label: "Alain Bartleman", type: "person", group: "person",
+    details: { "Role": "Person Authorizing Filing (PAF) for 15558409 Canada Ltd.", "Source": "Corporate Profile Report (4).pdf" } },
+  { id: "PELLEGRINI", label: "Danny Pellegrini", type: "person", group: "person",
+    details: { "Role": "Former charge holder on North Bay property", "Charges": "BS215784 (2022/06/20) — DISCHARGED 2024/08/06", "Source": "Parcel Register LRO 36" } },
+  { id: "FRIGSTAD", label: "Kelly Frigstad", type: "person", group: "person",
+    details: { "Role": "Former charge holder on North Bay (with Tymar Enterprises)", "Charge": "BS191495 (2020/10/02) — DISCHARGED 2022/06/21", "Source": "Parcel Register LRO 36" } },
+  { id: "TOOR_O", label: "Onkar Toor", type: "person", group: "person",
+    details: { "Role": "Former charge holder on both properties (group with Basra, Oliveira, 1000296893 Ont Inc.)", "Charges": "BS223820 (NB), SD470858 (SUD) — ALL DISCHARGED 2024/08", "Source": "Both Parcel Registers" } },
+  { id: "BASRA", label: "Kulvinder Basra", type: "person", group: "person",
+    details: { "Role": "Former charge holder on both properties (same group as Toor)", "Source": "Both Parcel Registers" } },
+  { id: "OLIVEIRA", label: "Ana Paula Oliveira", type: "person", group: "person",
+    details: { "Role": "Former charge holder on both properties (same group as Toor)", "Source": "Both Parcel Registers" } },
+  { id: "CREMONA", label: "Anthony Cremona", type: "person", group: "person",
+    details: { "Role": "Held charge on Sudbury property (transferred from Wilsondale Assets Mgmt Group)", "Charge": "SD437662 (2021/11/23) — DISCHARGED 2022/11/07", "Source": "Parcel Register LRO 53" } },
+  { id: "MAZZOBEL", label: "Richard James\nMazzobel", type: "person", group: "person",
+    details: { "Role": "Filed and withdrew a Land Caution on North Bay property", "Filed": "BS255391 — 2026/01/09", "Withdrawn": "BS256795 — 2026/03/04", "Source": "Parcel Register LRO 36 (Mar 2026 version)" } },
+
+  // LIEN CLAIMANTS
+  { id: "TC", label: "Taylor Construction\nO/A 14874285\nCanada Inc.", type: "lien_claimant", group: "lien",
+    details: { "Full Name": "TAYLOR CONSTRUCTION O/A 14874285 CANADA INC.", "Lien on North Bay": "$393,095 — BS251700 (2025/09/15) — ACTIVE", "Lien on Sudbury": "$1,034,337 — SD527569 (2025/09/15) — ACTIVE", "Certificate Filed": "BS254820 / SD534041 (2025/12/12)", "Source": "Both Parcel Registers" } },
+  { id: "TRANE", label: "Trane Canada ULC", type: "lien_claimant", group: "lien",
+    details: { "Full Name": "TRANE CANADA ULC", "Lien on Sudbury": "$510,306 — SD536187 (2026/01/21) — ACTIVE", "Source": "Parcel Register LRO 53" } },
+  { id: "C2772", label: "2772006\nOntario Limited", type: "lien_claimant", group: "lien",
+    details: { "Full Name": "2772006 ONTARIO LIMITED", "Lien on North Bay": "BS236014 (2024/04/09) — DELETED via BS239475 (2024/08/01)", "Source": "Parcel Register LRO 36" } },
+  { id: "URBAN", label: "2646320 Ontario Ltd.\nO/A Urban Installs", type: "lien_claimant", group: "lien",
+    details: { "Full Name": "2646320 ONTARIO LTD. OPERATING AS URBAN INSTALLS", "Lien on North Bay": "$26,352 — BS247282 (2025/05/12) — DELETED 2026/03/05", "Source": "Parcel Register LRO 36" } },
+  { id: "DIGSAFE", label: "DigSafe\nContracting", type: "lien_claimant", group: "lien",
+    details: { "Full Name": "DIGSAFE CONTRACTING", "Lien on North Bay": "$76,991 — BS247313 (2025/05/13) — DELETED 2026/03/06", "Source": "Parcel Register LRO 36" } },
+
+  // MORTGAGE / CHARGE HOLDERS (current & recent)
+  { id: "C15558", label: "15558409\nCanada Ltd.", type: "mortgage", group: "mortgage",
+    details: { "Full Name": "15558409 CANADA LTD.", "Type": "Extra-Provincial Federal Corporation", "OCN": "1000723431", "Incorporated": "November 27, 2023", "Address": "4007 Espaniel Rd, Sagamok Anishnawbek, ON P0P 2L0", "Chief Officer": "EVAN O'LEARY", "PAF": "ALAIN BARTLEMAN", "Charge North Bay": "$8,500,000 — BS239563 (2024/08/02) — ACTIVE", "Charge Sudbury": "$6,500,000 — SD502132 (2024/08/02) — ACTIVE", "Note": "Indigenous funding entity (Sagamok Anishnawbek First Nation)", "Source": "Corporate Profile (4).pdf + Both Parcel Registers" } },
+  { id: "C1882", label: "1882291\nOntario Inc.", type: "mortgage", group: "mortgage",
+    details: { "Full Name": "1882291 ONTARIO INC.", "Type": "Ontario Business Corporation", "OCN": "1882291", "Status": "Active", "Incorporated": "September 11, 2012", "Address": "30 Intermodal Dr, Unit 30, Brampton, ON L6T 5K1", "Director": "ABTAR SINGH TOOR (147 Belfield Rd, Rexdale)", "Expired Business Names": "FM TOWING (2012-2017), WOODBINE RENTALS (2016-2021)", "Charge North Bay": "$400,000 — BS253840 (2025/11/14) — DISCHARGED 2026/03/12", "Charge Sudbury": "SD532027 (2025/11/14) — DISCHARGED 2026/03/12", "Source": "Corporate Profile (2).pdf + Both Parcel Registers" } },
+  { id: "C2317", label: "2317682\nOntario Inc.", type: "mortgage", group: "mortgage",
+    details: { "Full Name": "2317682 ONTARIO INC.", "Charge North Bay": "BS221100 (2022/11/04) — DISCHARGED 2024/10/25", "Charge Sudbury": "SD464598 (2022/11/04) — DISCHARGED 2024/10/25", "Source": "Both Parcel Registers" } },
+  { id: "C1000", label: "1000296893\nOntario Inc.", type: "mortgage", group: "mortgage",
+    details: { "Full Name": "1000296893 ONTARIO INC.", "Role": "Charged both properties WITH Toor/Basra/Oliveira group", "Charge North Bay": "BS223820 (2023/02/14) — DISCHARGED 2024/08/09", "Charge Sudbury": "SD470858 (2023/02/14) — DISCHARGED 2024/08/09", "Source": "Both Parcel Registers" } },
+
+  // HISTORICAL ENTITIES
+  { id: "WILSON", label: "Wilsondale Assets\nMgmt Group Inc.", type: "historical", group: "historical",
+    details: { "Full Name": "WILSONDALE ASSETS MANAGEMENT GROUP INC.", "Role": "Received transfer of charge on Sudbury from 2815577 Ontario Ltd.", "Instrument": "SD437661 (2021/11/23)", "Then Transferred To": "CREMONA, ANTHONY — SD437662 (2021/11/23)", "Source": "Parcel Register LRO 53" } },
+  { id: "C2815", label: "2815577\nOntario Ltd.", type: "historical", group: "historical",
+    details: { "Full Name": "2815577 ONTARIO LTD.", "Role": "Received transfer of charge from 2817641 Ontario Ltd.", "Instrument": "SD418679 (2021/04/09)", "Then Transferred To": "WILSONDALE ASSETS MANAGEMENT GROUP INC.", "Source": "Parcel Register LRO 53" } },
+  { id: "C2817", label: "2817641\nOntario Ltd.", type: "historical", group: "historical",
+    details: { "Full Name": "2817641 ONTARIO LTD.", "Role": "Original charge holder on Sudbury property", "Instrument": "SD418420 (2021/04/06)", "Then Transferred To": "2815577 ONTARIO LTD.", "Source": "Parcel Register LRO 53" } },
+  { id: "MONARCH", label: "Monarch Recovery\nServices", type: "historical", group: "historical",
+    details: { "Full Name": "MONARCH RECOVERY SERVICES", "Role": "Previous owner of Sudbury property — bought from 6756051 Canada Inc., sold to Heritage", "Purchase": "SD329794 (2017/01/06) from 6756051 Canada Inc.", "Sale": "SD398764 (2020/07/02) to Heritage Community Living at Lakeview Inc. for $700,000", "Also": "Held mortgage on Sudbury until SD502161 (2024/08/06) — DISCHARGED", "Source": "Parcel Register LRO 53" } },
+  { id: "C6756", label: "6756051\nCanada Inc.", type: "historical", group: "historical",
+    details: { "Full Name": "6756051 CANADA INC.", "Role": "Bought Sudbury property from Sudbury Catholic District School Board, sold to Monarch", "Purchase": "SD325054 (2016/10/14)", "Sale": "SD329794 (2017/01/06) to Monarch Recovery Services", "Source": "Parcel Register LRO 53" } },
+  { id: "FARQUHAR", label: "Thos. Farquhar\n& Sons Co. Ltd", type: "historical", group: "historical",
+    details: { "Full Name": "THOS. FARQUHAR & SONS CO. LIMITED", "Role": "Previous owner of North Bay property — sold to Berkshire Enterprises", "Transfer": "BS189416 (2020/08/05) for $1,100,000", "Source": "Parcel Register LRO 36" } },
+  { id: "BMO", label: "Bank of\nMontreal", type: "historical", group: "historical",
+    details: { "Full Name": "BANK OF MONTREAL", "Role": "Former mortgage on North Bay property", "Charge": "LT382056 (1999/12/16) — DISCHARGED BS154102 (2017/02/17)", "Source": "Parcel Register LRO 36" } },
+  { id: "TYMAR", label: "Tymar\nEnterprises Inc.", type: "historical", group: "historical",
+    details: { "Full Name": "TYMAR ENTERPRISES INC.", "Role": "Former charge holder on North Bay with Kelly Frigstad", "Charge": "BS191495 (2020/10/02) — DISCHARGED BS215830 (2022/06/21)", "Source": "Parcel Register LRO 36" } },
+  { id: "C1930", label: "1930195\nOntario Inc.", type: "historical", group: "historical",
+    details: { "Full Name": "1930195 ONTARIO INC.", "Role": "Held charge on Sudbury from 6756051 Canada Inc.", "Charge": "SD325432 (2016/10/20) — DISCHARGED SD329800 (2017/01/06)", "Source": "Parcel Register LRO 53" } },
+  { id: "SCHOOL", label: "Sudbury Catholic\nDistrict School Board", type: "historical", group: "historical",
+    details: { "Full Name": "SUDBURY CATHOLIC DISTRICT SCHOOL BOARD (formerly The Sudbury District Roman Catholic Separate School Board)", "Role": "Owned Sudbury property since 1928, sold in 2016", "Source": "Parcel Register LRO 53" } },
+  { id: "CITY_NB", label: "City of\nNorth Bay", type: "historical", group: "historical",
+    details: { "Full Name": "THE CORPORATION OF THE CITY OF NORTH BAY", "Role": "Site Plan notice on North Bay property", "Instrument": "BS239789 (2024/08/14)", "Source": "Parcel Register LRO 36" } },
+  { id: "CITY_SUD", label: "City of Greater\nSudbury", type: "historical", group: "historical",
+    details: { "Full Name": "CITY OF GREATER SUDBURY", "Role": "Tax arrears on Sudbury property + APL General", "Instrument": "SD461144 (2022/09/21), SD467606 (2022/12/15)", "Source": "Parcel Register LRO 53" } },
+
+  // TRANSCRIPT-ONLY ENTITIES
+  { id: "LSTI", label: "LSTI", type: "company", group: "company",
+    details: { "Name from Transcript": "LSTI (also heard as LSCI, Listee Group, Listee Inc)", "Associated Person": "Lou — 'LSTI is Lou'", "Role": "The contractor company — the entity Zach dealt with for the construction work", "Note": "Italo says Berkshire + LSTI should stay in lawsuit for North Bay", "Source": "Transcript only — not found in parcel registers or corporate profiles" } },
+
+  // OTHER CORPORATE PROFILES
+  { id: "C2771", label: "2771664\nOntario Inc.", type: "company", group: "company",
+    details: { "Full Name": "2771664 ONTARIO INC.", "OCN": "2771664", "Incorporated": "August 25, 2020", "Status": "Active", "Address": "Whitby, Ontario", "Note": "Profile pulled but role in dispute unclear. Similar number to 2772006 Ontario Limited (lien claimant).", "Source": "Profile_Report_EN 2771664.pdf" } },
+  { id: "FM", label: "FM Towing", type: "company", group: "company",
+    details: { "Business Name": "FM TOWING", "BIN": "220942668", "Registered": "September 12, 2012", "Status": "INACTIVE — expired September 11, 2017", "Registrant Corporation": "1882291 ONTARIO INC.", "Location": "Brampton, Ontario", "Source": "Profile_Report_EN FM Towing.pdf" } },
+  { id: "WOODBINE", label: "Woodbine Rentals", type: "company", group: "company",
+    details: { "Business Name": "WOODBINE RENTALS", "BIN": "260873377", "Registered": "August 29, 2016", "Status": "INACTIVE — expired August 28, 2021", "Registrant Corporation": "1882291 ONTARIO INC.", "Source": "Corporate Profile (2).pdf" } },
+  { id: "TOWTALL", label: "Towtall Towing\nInc.", type: "company", group: "company",
+    details: { "Full Name": "TOWTALL TOWING INC.", "OCN": "3055939", "Type": "Extra-Provincial Federal Corporation", "Incorporated": "September 15, 2010", "Address": "Ajax, Ontario", "Source": "View Corporation Towtal Towing.pdf" } },
+
+  // LAWYERS
+  // NOTE: "Tyler" was a Deepgram transcription error — speaker said "Taylor's lawyer" (= Zach's lawyer).
+  // There is NO separate person named Tyler. Removed from graph.
+  { id: "MOOR", label: "Moor / Roberto\n(Lawyer)", type: "lawyer", group: "other",
+    details: { "Role": "Lawyer(s) on Zach's side", "Source": "Transcript" } },
+];
+
+const edges = [
+  // === OWNERSHIP (property) ===
+  { source: "BERK", target: "NB", label: "OWNS", type: "ownership", source_doc: "Parcel Register LRO 36, BS189416 (2020/08/05)" },
+  { source: "HER", target: "SUD", label: "OWNS", type: "ownership", source_doc: "Parcel Register LRO 53, SD398764 (2020/07/02)" },
+
+  // === PERSON → COMPANY CONNECTIONS ===
+  { source: "MIKE", target: "BERK", label: "owner/director", type: "person_company", source_doc: "Transcript: 'I'm Berkshire'" },
+  { source: "ZACH", target: "TC", label: "operates as", type: "person_company", source_doc: "Transcript + Parcel Register" },
+  { source: "LOU", target: "LSTI", label: "'LSTI is Lou'", type: "person_company", source_doc: "Transcript" },
+  { source: "ITALO", target: "MIKE", label: "associate / developer", type: "person_company", source_doc: "Transcript: Italo and Mike work together" },
+  { source: "ITALO", target: "BERK", label: "developer for", type: "person_company", source_doc: "Transcript: Italo is the developer for Berkshire" },
+  { source: "ITALO", target: "HER", label: "developer for", type: "person_company", source_doc: "Transcript: Italo involved with Heritage project" },
+  { source: "TOOR_A", target: "C1882", label: "DIRECTOR", type: "person_company", source_doc: "Corporate Profile (2).pdf — Active Director since Sep 11, 2012" },
+  { source: "OLEARY", target: "C15558", label: "CHIEF OFFICER", type: "person_company", source_doc: "Corporate Profile (4).pdf" },
+  { source: "BARTLEMAN", target: "C15558", label: "PAF (auth. filing)", type: "person_company", source_doc: "Corporate Profile (4).pdf — Initial Return filed Nov 28, 2023" },
+  { source: "PELLEGRINI", target: "NB", label: "former charge (disch.)", type: "person_property", source_doc: "LRO 36: BS215784 (2022/06/20) → DISCH BS239582 (2024/08/06)" },
+  { source: "FRIGSTAD", target: "TYMAR", label: "co-charge holder", type: "person_company", source_doc: "LRO 36: BS191495 (2020/10/02)" },
+  { source: "TOOR_O", target: "C1000", label: "co-charge holder", type: "person_company", source_doc: "LRO 36: BS223820, LRO 53: SD470858" },
+  { source: "BASRA", target: "C1000", label: "co-charge holder", type: "person_company", source_doc: "LRO 36: BS223820, LRO 53: SD470858" },
+  { source: "OLIVEIRA", target: "C1000", label: "co-charge holder", type: "person_company", source_doc: "LRO 36: BS223820, LRO 53: SD470858" },
+  { source: "CREMONA", target: "SUD", label: "received charge transfer", type: "person_property", source_doc: "LRO 53: SD437662 (2021/11/23) → DISCH SD464680 (2022/11/07)" },
+  { source: "MAZZOBEL", target: "NB", label: "Land Caution (withdrawn)", type: "person_property", source_doc: "LRO 36: BS255391 (2026/01/09) → WITHDRAWN BS256795 (2026/03/04)" },
+
+  // === ACTIVE LIENS ===
+  { source: "TC", target: "NB", label: "LIEN $393,095", type: "lien", source_doc: "LRO 36: BS251700 (2025/09/15) — ACTIVE" },
+  { source: "TC", target: "SUD", label: "LIEN $1,034,337", type: "lien", source_doc: "LRO 53: SD527569 (2025/09/15) — ACTIVE" },
+  { source: "TRANE", target: "SUD", label: "LIEN $510,306", type: "lien", source_doc: "LRO 53: SD536187 (2026/01/21) — ACTIVE" },
+
+  // === DELETED/HISTORICAL LIENS ===
+  { source: "C2772", target: "NB", label: "lien (deleted)", type: "historical", source_doc: "LRO 36: BS236014 (2024/04/09) → DEL BS239475 (2024/08/01)" },
+  { source: "URBAN", target: "NB", label: "lien $26,352 (deleted)", type: "historical", source_doc: "LRO 36: BS247282 (2025/05/12) → DEL BS256819 (2026/03/05)" },
+  { source: "DIGSAFE", target: "NB", label: "lien $76,991 (deleted)", type: "historical", source_doc: "LRO 36: BS247313 (2025/05/13) → DEL BS256844 (2026/03/06)" },
+
+  // === ACTIVE MORTGAGES/CHARGES ===
+  { source: "C15558", target: "NB", label: "CHARGE $8,500,000", type: "mortgage", source_doc: "LRO 36: BS239563 (2024/08/02) — ACTIVE" },
+  { source: "C15558", target: "SUD", label: "CHARGE $6,500,000", type: "mortgage", source_doc: "LRO 53: SD502132 (2024/08/02) — ACTIVE" },
+
+  // === DISCHARGED CHARGES ===
+  { source: "C1882", target: "NB", label: "charge $400K (disch.)", type: "historical", source_doc: "LRO 36: BS253840 (2025/11/14) → DISCH BS256941 (2026/03/12)" },
+  { source: "C1882", target: "SUD", label: "charge (disch.)", type: "historical", source_doc: "LRO 53: SD532027 (2025/11/14) → DISCH SD538943 (2026/03/12)" },
+  { source: "C2317", target: "NB", label: "charge (disch.)", type: "historical", source_doc: "LRO 36: BS221100 (2022/11/04) → DISCH BS242108 (2024/10/25)" },
+  { source: "C2317", target: "SUD", label: "charge (disch.)", type: "historical", source_doc: "LRO 53: SD464598 (2022/11/04) → DISCH SD507264 (2024/10/25)" },
+  { source: "C1000", target: "NB", label: "charge (disch.)", type: "historical", source_doc: "LRO 36: BS223820 (2023/02/14) → DISCH BS239722 (2024/08/09)" },
+  { source: "C1000", target: "SUD", label: "charge (disch.)", type: "historical", source_doc: "LRO 53: SD470858 (2023/02/14) → DISCH SD502469 (2024/08/09)" },
+  { source: "TYMAR", target: "NB", label: "charge (disch.)", type: "historical", source_doc: "LRO 36: BS191495 (2020/10/02) → DISCH BS215830 (2022/06/21)" },
+  { source: "BMO", target: "NB", label: "mortgage (disch.)", type: "historical", source_doc: "LRO 36: LT382056 (1999/12/16) → DISCH BS154102 (2017/02/17)" },
+
+  // === PROPERTY TRANSFER CHAIN (Sudbury) ===
+  { source: "SCHOOL", target: "C6756", label: "sold to (2016)", type: "transfer", source_doc: "LRO 53: SD325054 (2016/10/14)" },
+  { source: "C6756", target: "MONARCH", label: "sold to (2017)", type: "transfer", source_doc: "LRO 53: SD329794 (2017/01/06)" },
+  { source: "MONARCH", target: "HER", label: "sold for $700K (2020)", type: "transfer", source_doc: "LRO 53: SD398764 (2020/07/02)" },
+  { source: "C6756", target: "C1930", label: "charge holder", type: "historical", source_doc: "LRO 53: SD325432 (2016/10/20) → DISCH SD329800 (2017/01/06)" },
+
+  // === CHARGE TRANSFER CHAIN (Sudbury) ===
+  { source: "C2817", target: "C2815", label: "transferred charge to", type: "transfer", source_doc: "LRO 53: SD418679 (2021/04/09)" },
+  { source: "C2815", target: "WILSON", label: "transferred charge to", type: "transfer", source_doc: "LRO 53: SD437661 (2021/11/23)" },
+  { source: "WILSON", target: "CREMONA", label: "transferred charge to", type: "transfer", source_doc: "LRO 53: SD437662 (2021/11/23)" },
+
+  // === PROPERTY TRANSFER CHAIN (North Bay) ===
+  { source: "FARQUHAR", target: "BERK", label: "sold for $1.1M (2020)", type: "transfer", source_doc: "LRO 36: BS189416 (2020/08/05)" },
+
+  // === BUSINESS NAME REGISTRATIONS ===
+  { source: "C1882", target: "FM", label: "registered business name", type: "person_company", source_doc: "Corporate Profile (2).pdf — BIN 220942668, expired 2017" },
+  { source: "C1882", target: "WOODBINE", label: "registered business name", type: "person_company", source_doc: "Corporate Profile (2).pdf — BIN 260873377, expired 2021" },
+
+  // === MUNICIPALITY NOTICES ===
+  { source: "CITY_NB", target: "NB", label: "site plan notice", type: "historical", source_doc: "LRO 36: BS239789 (2024/08/14)" },
+  { source: "CITY_SUD", target: "SUD", label: "tax arrears", type: "historical", source_doc: "LRO 53: SD461144 (2022/09/21)" },
+
+  // === TRANSCRIPT RELATIONSHIPS ===
+  { source: "FRANK", target: "ITALO", label: "intermediary for", type: "person_company", source_doc: "Transcript" },
+
+  // REMOVED: Tyler → Italo edge — "Tyler" was a misheard "Taylor" (Zach). No such person exists.
+  { source: "MOOR", target: "ZACH", label: "lawyer for", type: "person_company", source_doc: "Transcript" },
+
+  // === MONARCH held mortgage post-sale ===
+  { source: "MONARCH", target: "SUD", label: "charge post-sale (disch.)", type: "historical", source_doc: "LRO 53: SD398765 (2020/07/02) → DISCH SD502161 (2024/08/06)" },
+];
+
+// ===================================================================
+//  COLOR AND SIZE MAPS
+// ===================================================================
+const colorMap = {
+  property: "#f97316",
+  property_owner: "#22d3ee",
+  person: "#a78bfa",
+  company: "#60a5fa",
+  lien_claimant: "#f43f5e",
+  mortgage: "#fbbf24",
+  historical: "#34d399",
+  lawyer: "#94a3b8"
+};
+
+const edgeColorMap = {
+  ownership: "#22d3ee",
+  lien: "#f43f5e",
+  mortgage: "#fbbf24",
+  person_company: "#a78bfa",
+  person_property: "#a78bfa",
+  historical: "#666",
+  transfer: "#888"
+};
+
+const sizeMap = {
+  property: 28,
+  property_owner: 22,
+  person: 14,
+  company: 14,
+  lien_claimant: 18,
+  mortgage: 20,
+  historical: 12,
+  lawyer: 11
+};
+
+// ===================================================================
+//  D3 FORCE GRAPH
+// ===================================================================
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const svg = d3.select("#graph")
+  .attr("viewBox", [0, 0, width, height]);
+
+const defs = svg.append("defs");
+defs.append("marker")
+  .attr("id", "arrowhead")
+  .attr("viewBox", "0 -5 10 10")
+  .attr("refX", 20)
+  .attr("refY", 0)
+  .attr("markerWidth", 6)
+  .attr("markerHeight", 6)
+  .attr("orient", "auto")
+  .append("path")
+  .attr("d", "M0,-5L10,0L0,5")
+  .attr("fill", "#555");
+
+const g = svg.append("g");
+
+const zoom = d3.zoom()
+  .scaleExtent([0.1, 4])
+  .on("zoom", (event) => g.attr("transform", event.transform));
+
+svg.call(zoom);
+
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(edges).id(d => d.id).distance(d => {
+    if (d.type === "ownership") return 80;
+    if (d.type === "lien" || d.type === "mortgage") return 120;
+    return 160;
+  }))
+  .force("charge", d3.forceManyBody().strength(-600))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collision", d3.forceCollide().radius(d => sizeMap[d.type] + 20));
+
+// Draw edges
+const link = g.append("g")
+  .selectAll("line")
+  .data(edges)
+  .join("line")
+  .attr("class", "link")
+  .attr("stroke", d => edgeColorMap[d.type] || "#555")
+  .attr("stroke-width", d => {
+    if (d.type === "ownership") return 3;
+    if (d.type === "lien" || d.type === "mortgage") return 2.5;
+    return 1.2;
+  })
+  .attr("stroke-dasharray", d => (d.type === "historical" || d.type === "transfer") ? "4,3" : "none")
+  .attr("marker-end", d => d.type === "transfer" ? "url(#arrowhead)" : "");
+
+// Edge labels
+const linkLabel = g.append("g")
+  .selectAll("text")
+  .data(edges)
+  .join("text")
+  .attr("class", "link-label")
+  .text(d => d.label);
+
+// Draw nodes
+const node = g.append("g")
+  .selectAll("g")
+  .data(nodes)
+  .join("g")
+  .attr("class", "node")
+  .call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended))
+  .on("click", (event, d) => {
+    event.stopPropagation();
+    selectNode(d);
+  });
+
+node.append("circle")
+  .attr("r", d => sizeMap[d.type])
+  .attr("fill", d => colorMap[d.type])
+  .attr("stroke", d => colorMap[d.type])
+  .attr("stroke-width", 1.5)
+  .attr("fill-opacity", 0.15);
+
+// Multi-line labels
+node.each(function(d) {
+  const lines = d.label.split("\n");
+  const el = d3.select(this);
+  lines.forEach((line, i) => {
+    el.append("text")
+      .attr("class", "node-label")
+      .attr("dy", `${(i - (lines.length - 1) / 2) * 12 + sizeMap[d.type] + 14}px`)
+      .text(line);
+  });
+});
+
+let showLabels = true;
+
+simulation.on("tick", () => {
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+
+  linkLabel
+    .attr("x", d => (d.source.x + d.target.x) / 2)
+    .attr("y", d => (d.source.y + d.target.y) / 2 - 4);
+
+  node.attr("transform", d => `translate(${d.x},${d.y})`);
+});
+
+// ===================================================================
+//  INTERACTION
+// ===================================================================
+let selectedNode = null;
+
+function selectNode(d) {
+  selectedNode = d;
+
+  // Highlight connected
+  const connectedIds = new Set([d.id]);
+  edges.forEach(e => {
+    const sid = typeof e.source === "object" ? e.source.id : e.source;
+    const tid = typeof e.target === "object" ? e.target.id : e.target;
+    if (sid === d.id) connectedIds.add(tid);
+    if (tid === d.id) connectedIds.add(sid);
+  });
+
+  node.classed("dimmed", n => !connectedIds.has(n.id));
+  node.classed("selected", n => n.id === d.id);
+  link.classed("dimmed", e => {
+    const sid = typeof e.source === "object" ? e.source.id : e.source;
+    const tid = typeof e.target === "object" ? e.target.id : e.target;
+    return sid !== d.id && tid !== d.id;
+  });
+  linkLabel.classed("dimmed", e => {
+    const sid = typeof e.source === "object" ? e.source.id : e.source;
+    const tid = typeof e.target === "object" ? e.target.id : e.target;
+    return sid !== d.id && tid !== d.id;
+  });
+
+  showDetailPanel(d);
+}
+
+function showDetailPanel(d) {
+  const panel = document.getElementById("detailPanel");
+  const content = document.getElementById("detailContent");
+  
+  let html = `<h2>${d.label.replace(/\n/g, " ")}</h2>`;
+  html += `<div class="entity-type">${d.type.replace(/_/g, " ")}</div>`;
+
+  // Details
+  if (d.details) {
+    html += `<div class="detail-section"><h4>Details</h4>`;
+    for (const [key, val] of Object.entries(d.details)) {
+      html += `<div class="detail-row"><span class="label">${key}: </span><span class="value">${val}</span></div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Connections
+  const connections = edges.filter(e => {
+    const sid = typeof e.source === "object" ? e.source.id : e.source;
+    const tid = typeof e.target === "object" ? e.target.id : e.target;
+    return sid === d.id || tid === d.id;
+  });
+
+  if (connections.length > 0) {
+    html += `<div class="detail-section"><h4>Connections (${connections.length})</h4>`;
+    connections.forEach(e => {
+      const sid = typeof e.source === "object" ? e.source.id : e.source;
+      const tid = typeof e.target === "object" ? e.target.id : e.target;
+      const otherId = sid === d.id ? tid : sid;
+      const otherNode = nodes.find(n => n.id === otherId);
+      const direction = sid === d.id ? "→" : "←";
+      const color = edgeColorMap[e.type] || "#888";
+      html += `<div class="connection-item" style="border-left-color:${color}">
+        <span class="conn-target">${direction} ${otherNode ? otherNode.label.replace(/\n/g, " ") : otherId}</span>
+        <span class="conn-type"> — ${e.label}</span>
+        <span class="conn-source">📄 ${e.source_doc}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  content.innerHTML = html;
+  panel.classList.add("active");
+}
+
+function closePanel() {
+  document.getElementById("detailPanel").classList.remove("active");
+  node.classed("dimmed", false).classed("selected", false);
+  link.classed("dimmed", false);
+  linkLabel.classed("dimmed", false);
+  selectedNode = null;
+}
+
+svg.on("click", () => closePanel());
+
+function resetZoom() {
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+}
+
+function toggleLabels() {
+  showLabels = !showLabels;
+  d3.selectAll(".node-label").style("display", showLabels ? "block" : "none");
+  d3.selectAll(".link-label").style("display", showLabels ? "block" : "none");
+  document.getElementById("labelToggle").classList.toggle("active", showLabels);
+}
+
+function dragstarted(event) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  event.subject.fx = event.subject.x;
+  event.subject.fy = event.subject.y;
+}
+
+function dragged(event) {
+  event.subject.fx = event.x;
+  event.subject.fy = event.y;
+}
+
+function dragended(event) {
+  if (!event.active) simulation.alphaTarget(0);
+  event.subject.fx = null;
+  event.subject.fy = null;
+}
+
+// Initial zoom out to see everything
+svg.call(zoom.transform, d3.zoomIdentity.translate(width * 0.05, height * 0.05).scale(0.9));
+</script>
+
+</body>
+</html>
