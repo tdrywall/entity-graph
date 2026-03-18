@@ -444,7 +444,7 @@ const nodes = [
 
   // TRANSCRIPT-ONLY ENTITIES
   { id: "LSTI", label: "LSTI", type: "company", group: "company",
-    details: { "Name from Transcript": "LSTI (also heard as LSCI, Listee Group, Listee Inc)", "Associated Person": "Lou — 'LSTI is Lou'", "Role": "The contractor company — the entity Zach dealt with for the construction work", "Note": "Italo says Berkshire + LSTI should stay in lawsuit for North Bay", "Source": "Transcript only — not found in parcel registers or corporate profiles" } },
+    details: { "Name from Transcript": "LSTI (also heard as LSCI, Listee Group, Listee Inc)", "Associated Person": "Lou — 'LSTI is Lou'", "Role": "General contractor for BOTH North Bay and Sudbury projects", "Note": "Italo says Berkshire + LSTI should stay in lawsuit. Frank works for LSTI as subcontractor (de facto employee).", "Source": "Transcript + Zach's direct knowledge" } },
 
   // OTHER CORPORATE PROFILES
   { id: "C2771", label: "2771664\nOntario Inc.", type: "company", group: "company",
@@ -490,6 +490,10 @@ const edges = [
   { source: "TC", target: "NB", label: "LIEN $393,095", type: "lien", source_doc: "LRO 36: BS251700 (2025/09/15) — ACTIVE" },
   { source: "TC", target: "SUD", label: "LIEN $1,034,337", type: "lien", source_doc: "LRO 53: SD527569 (2025/09/15) — ACTIVE" },
   { source: "TRANE", target: "SUD", label: "LIEN $510,306", type: "lien", source_doc: "LRO 53: SD536187 (2026/01/21) — ACTIVE" },
+
+  // === LSTI — CONTRACTOR FOR BOTH PROJECTS ===
+  { source: "LSTI", target: "NB", label: "CONTRACTOR", type: "person_company", source_doc: "Transcript: Italo says 'Berkshire + LSTI should stay in lawsuit' for North Bay" },
+  { source: "LSTI", target: "SUD", label: "CONTRACTOR", type: "person_company", source_doc: "Transcript: LSTI is the contractor for both projects — Zach's direct knowledge" },
 
   // === DELETED/HISTORICAL LIENS ===
   { source: "C2772", target: "NB", label: "lien (deleted)", type: "historical", source_doc: "LRO 36: BS236014 (2024/04/09) → DEL BS239475 (2024/08/01)" },
