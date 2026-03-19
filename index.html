@@ -459,8 +459,12 @@ const nodes = [
   // LAWYERS
   // NOTE: "Tyler" was a Deepgram transcription error — speaker said "Taylor's lawyer" (= Zach's lawyer).
   // There is NO separate person named Tyler. Removed from graph.
-  { id: "MOOR", label: "Moor / Roberto\n(Lawyer)", type: "lawyer", group: "other",
-    details: { "Role": "Lawyer on Italo/Ferrari's side", "Source": "Transcript: 'the email from Moor he doesn't understand exactly'" } },
+  { id: "MOOR", label: "Moor / Domenic\n(Italo's Lawyer)", type: "lawyer", group: "other",
+    details: { "Role": "Lawyer on Italo/Ferrari's side", "Transcript Name": "Moor / Roberto (Deepgram transcription)", "Gmail Evidence": "Domenic referenced in settlement emails: 'Domenic's email of Feb 10 states: My clients to pay reasonable legal fees of Taylor.' — ZERO email results for 'Moor' or 'Roberto' as lawyer.", "Possible Identity": "Domenic Loschiavo (domenic@salwood.ca) — or different Domenic", "Source": "Transcript + Gmail audit" } },
+
+  // Zach's lawyers — verified by Gmail
+  { id: "WEIR", label: "Weir Foulds LLP\n(Zach's Lawyers)", type: "lawyer", group: "other",
+    details: { "Firm": "Weir Foulds LLP", "Lead Partner": "Paul Jacoby (pjacoby@weirfoulds.com)", "Associates": "Brian Kuchar (bkuchar@weirfoulds.com), Niharika Shivade (nshivade@weirfoulds.com)", "Email Subject": "Discussion with Italo's lawyer - Taylor Construction and LSTI INC. et al.", "Source": "Gmail — verified from multiple email threads" } },
 ];
 
 const edges = [
@@ -541,7 +545,8 @@ const edges = [
   { source: "FRANK", target: "LSTI", label: "subcontractor (de facto employee)", type: "person_company", source_doc: "Zach's knowledge — Frank works for LSTI on paper as subcontractor, technically employee" },
 
   // REMOVED: Tyler → Italo edge — "Tyler" was a misheard "Taylor" (Zach). No such person exists.
-  { source: "MOOR", target: "ITALO", label: "lawyer for", type: "person_company", source_doc: "Transcript: 'the email from Moor' — represents Italo's side" },
+  { source: "MOOR", target: "ITALO", label: "lawyer for", type: "person_company", source_doc: "Transcript + Gmail: 'Domenic's email — My clients to pay legal fees of Taylor'" },
+  { source: "WEIR", target: "ZACH", label: "lawyer for", type: "person_company", source_doc: "Gmail: pjacoby@weirfoulds.com — email threads re: Taylor Construction and LSTI INC." },
 
   // === MONARCH held mortgage post-sale ===
   { source: "MONARCH", target: "SUD", label: "charge post-sale (disch.)", type: "historical", source_doc: "LRO 53: SD398765 (2020/07/02) → DISCH SD502161 (2024/08/06)" },
